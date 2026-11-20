@@ -9,7 +9,7 @@ activityCompose = "1.13.0"
 kotlin = "2.0.21"
 composeBom = "2026.02.01"
 # Room — base de datos local SQLite con ORM (Tareas 1-3 del Lab 09)
-room = "2.6.1"
+room = "2.8.5"
 # KSP — procesador de símbolos Kotlin que Room usa para generar código en tiempo de compilación
 ksp = "2.0.21-1.0.28"
 
