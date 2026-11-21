@@ -1,9 +1,11 @@
 package com.example.idnp_lab_09.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.example.idnp_lab_09.data.local.entity.DocumentoEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -116,4 +118,27 @@ interface DocumentoDao {
      */
     @Query("SELECT COUNT(*) FROM documentos")
     fun contarDocumentos(): Flow<Int>
+
+    // ── OPERACIONES ADICIONALES (TAREA 6) ─────────────────────────────────────
+
+    /**
+     * Actualiza un documento existente. Room localiza la fila por su clave
+     * primaria ([DocumentoEntity.id]) y sobrescribe el resto de columnas.
+     *
+     * SQL generado: UPDATE `documentos` SET `titulo` = ?, ... WHERE `id` = ?
+     *
+     * @return número de filas modificadas (1 si el id existía, 0 si no).
+     */
+    @Update
+    suspend fun actualizar(documento: DocumentoEntity): Int
+
+    /**
+     * Elimina un documento identificado por su clave primaria.
+     *
+     * SQL generado: DELETE FROM `documentos` WHERE `id` = ?
+     *
+     * @return número de filas eliminadas (1 si el id existía, 0 si no).
+     */
+    @Delete
+    suspend fun eliminar(documento: DocumentoEntity): Int
 }

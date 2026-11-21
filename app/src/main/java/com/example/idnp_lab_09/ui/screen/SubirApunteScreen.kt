@@ -12,21 +12,23 @@ import androidx.compose.ui.unit.dp
 import com.example.idnp_lab_09.ui.viewmodel.DocumentoViewModel
 
 /**
- * Pantalla de formulario simple para registrar un nuevo apunte o documento (Tarea 4).
- * Permite ingresar título, curso, autor, descripción y número de páginas.
+ * Pantalla de formulario para registrar un nuevo apunte (Tarea 4) o editar uno
+ * existente (Tarea 6). Permite ingresar título, curso, autor, descripción y número de páginas.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubirApunteScreen(
     viewModel: DocumentoViewModel,
+    onGuardado: () -> Unit,
+    onCancelar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var mostrarMensajeExito by remember { mutableStateOf(false) }
+    val editando = viewModel.enModoEdicion
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("CampusDocs - Registrar Apunte") },
+                title = { Text(if (editando) "CampusDocs - Editar Apunte" else "CampusDocs - Registrar Apunte") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -44,7 +46,7 @@ fun SubirApunteScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Formulario de Registro de Apuntes",
+                text = if (editando) "Editar apunte #${viewModel.documentoEnEdicion?.id}" else "Formulario de Registro de Apuntes",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -100,33 +102,24 @@ fun SubirApunteScreen(
                 )
             }
 
-            // Mensaje de éxito tras guardar
-            if (mostrarMensajeExito) {
-                Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "¡Apunte registrado exitosamente en la base de datos Room!",
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
             Button(
-                onClick = {
-                    viewModel.guardarDocumento {
-                        mostrarMensajeExito = true
-                    }
-                },
+                // Al terminar la inserción/actualización se vuelve a la lista,
+                // que ya muestra el cambio porque observa el Flow de Room.
+                onClick = { viewModel.guardarDocumento(onSuccess = onGuardado) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
-                Text("Guardar Apunte")
+                Text(if (editando) "Guardar cambios" else "Guardar Apunte")
+            }
+
+            OutlinedButton(
+                onClick = onCancelar,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            ) {
+                Text("Cancelar")
             }
         }
     }

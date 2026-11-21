@@ -14,17 +14,27 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel para gestionar el estado de los documentos y el formulario de registro (Tarea 4).
+ * ViewModel que gestiona el estado de los documentos (Tareas 4, 5 y 6).
  * Conecta la UI de Jetpack Compose con el [DocumentoRepository] de forma reactiva y segura.
  */
 class DocumentoViewModel(private val repository: DocumentoRepository) : ViewModel() {
 
-    // Lista reactiva de documentos almacenados en Room
+    // ── LISTA REACTIVA (TAREA 5) ──────────────────────────────────────────────
+
+    // Lista de documentos almacenados en Room; se reemite ante cada INSERT/UPDATE/DELETE
     val documentos: StateFlow<List<DocumentoEntity>> = repository.todosLosDocumentos
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
+        )
+
+    // Total de filas de la tabla (contador del encabezado de la lista)
+    val totalDocumentos: StateFlow<Int> = repository.totalDocumentos
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
         )
 
     // ── ESTADOS DEL FORMULARIO DE REGISTRO (TAREA 4) ──────────────────────────
@@ -46,6 +56,13 @@ class DocumentoViewModel(private val repository: DocumentoRepository) : ViewMode
 
     var mensajeError by mutableStateOf<String?>(null)
         private set
+
+    // Documento que se está editando; null = el formulario registra uno nuevo (Tarea 6)
+    var documentoEnEdicion by mutableStateOf<DocumentoEntity?>(null)
+        private set
+
+    val enModoEdicion: Boolean
+        get() = documentoEnEdicion != null
 
     fun actualizarTitulo(nuevoTitulo: String) {
         titulo = nuevoTitulo
@@ -70,8 +87,28 @@ class DocumentoViewModel(private val repository: DocumentoRepository) : ViewMode
         numeroPaginas = nuevoNumero
     }
 
+    // ── EDICIÓN (TAREA 6) ─────────────────────────────────────────────────────
+
+    /** Prepara el formulario para registrar un documento nuevo. */
+    fun iniciarRegistro() {
+        documentoEnEdicion = null
+        limpiarFormulario()
+    }
+
+    /** Carga los datos de [documento] en el formulario para editarlo. */
+    fun iniciarEdicion(documento: DocumentoEntity) {
+        documentoEnEdicion = documento
+        titulo = documento.titulo
+        curso = documento.curso
+        autor = documento.autor
+        descripcion = documento.descripcion
+        numeroPaginas = documento.numeroPaginas.toString()
+        mensajeError = null
+    }
+
     /**
-     * Valida e inserta un nuevo documento en la base de datos a través del repositorio.
+     * Valida el formulario y, según el modo, inserta un documento nuevo o
+     * actualiza el que se está editando.
      */
     fun guardarDocumento(onSuccess: () -> Unit) {
         if (titulo.isBlank() || curso.isBlank() || autor.isBlank()) {
@@ -80,27 +117,57 @@ class DocumentoViewModel(private val repository: DocumentoRepository) : ViewMode
         }
 
         val paginasInt = numeroPaginas.toIntOrNull() ?: 1
+        val original = documentoEnEdicion
 
         viewModelScope.launch {
-            val nuevoDocumento = DocumentoEntity(
-                titulo = titulo.trim(),
-                curso = curso.trim(),
-                autor = autor.trim(),
-                descripcion = descripcion.trim(),
-                numeroPaginas = paginasInt
-            )
-            repository.insertar(nuevoDocumento)
+            if (original == null) {
+                repository.insertar(
+                    DocumentoEntity(
+                        titulo = titulo.trim(),
+                        curso = curso.trim(),
+                        autor = autor.trim(),
+                        descripcion = descripcion.trim(),
+                        numeroPaginas = paginasInt
+                    )
+                )
+            } else {
+                // copy() conserva id y fechaRegistro: Room ubica la fila por el id
+                repository.actualizar(
+                    original.copy(
+                        titulo = titulo.trim(),
+                        curso = curso.trim(),
+                        autor = autor.trim(),
+                        descripcion = descripcion.trim(),
+                        numeroPaginas = paginasInt
+                    )
+                )
+            }
 
-            // Limpiar campos del formulario tras inserción exitosa
-            titulo = ""
-            curso = ""
-            autor = ""
-            descripcion = ""
-            numeroPaginas = ""
-            mensajeError = null
-
+            documentoEnEdicion = null
+            limpiarFormulario()
             onSuccess()
         }
+    }
+
+    // ── ELIMINACIÓN (TAREA 6) ─────────────────────────────────────────────────
+
+    /** Elimina [documento] de Room; la LazyColumn se actualiza sola vía Flow. */
+    fun eliminarDocumento(documento: DocumentoEntity) {
+        viewModelScope.launch { repository.eliminar(documento) }
+    }
+
+    /** Deshace una eliminación reinsertando el documento con su mismo id. */
+    fun restaurarDocumento(documento: DocumentoEntity) {
+        viewModelScope.launch { repository.insertar(documento) }
+    }
+
+    private fun limpiarFormulario() {
+        titulo = ""
+        curso = ""
+        autor = ""
+        descripcion = ""
+        numeroPaginas = ""
+        mensajeError = null
     }
 
     /**

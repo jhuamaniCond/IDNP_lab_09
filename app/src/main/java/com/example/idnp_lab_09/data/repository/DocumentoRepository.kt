@@ -84,4 +84,20 @@ class DocumentoRepository(private val dao: DocumentoDao) {
      */
     suspend fun insertarTodos(documentos: List<DocumentoEntity>): List<Long> =
         dao.insertarTodos(documentos)
+
+    // ── ACTUALIZACIÓN Y ELIMINACIÓN (TAREA 6) ─────────────────────────────────
+
+    /**
+     * Sobrescribe un documento existente (lo localiza por su id).
+     *
+     * @return número de filas modificadas.
+     */
+    suspend fun actualizar(documento: DocumentoEntity): Int = dao.actualizar(documento)
+
+    /**
+     * Elimina un documento de la base de datos.
+     *
+     * @return número de filas eliminadas.
+     */
+    suspend fun eliminar(documento: DocumentoEntity): Int = dao.eliminar(documento)
 }
